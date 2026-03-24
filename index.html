@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Level Devil by IT Park</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%; background: #0a0a12;
+      background-repeat: no-repeat; background-position: center; background-size: cover; background-attachment: fixed;
+      overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    #wrap {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100%; padding: 8px; position: relative; z-index: 2;
+    }
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100vh;
+      background: #12121c;
+      border-radius: 4px;
+      box-shadow: 0 0 0 2px #2a2a3a, 0 12px 40px rgba(0,0,0,.55);
+    }
+    #touchControls {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 6;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+    #touchControls.menu-hidden { display: none; }
+    #rotatePrompt {
+      position: fixed;
+      inset: 0;
+      z-index: 9;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(5, 14, 10, 0.82);
+      color: #d7ffe8;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      pointer-events: none;
+    }
+    #rotatePrompt.show { display: flex; }
+    .touch-left {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .touch-right {
+      margin-right: 64px;
+      pointer-events: auto;
+    }
+    .touch-btn {
+      min-width: 62px;
+      min-height: 46px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(118, 236, 165, 0.55);
+      cursor: pointer;
+      user-select: none;
+      touch-action: none;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+      color: rgba(222, 255, 236, 0.95);
+      background: linear-gradient(180deg, rgba(47, 141, 87, 0.28), rgba(36, 107, 67, 0.18));
+      box-shadow: 0 0 0 1px rgba(42, 42, 58, 0.55), 0 0 14px rgba(116, 240, 164, 0.24), 0 6px 16px rgba(0,0,0,.30);
+      backdrop-filter: blur(1px);
+    }
+    .touch-btn:active {
+      filter: brightness(1.08);
+      transform: translateY(1px);
+    }
+    #touchLeft { margin-left: 64px; }
+    @media (max-width: 900px) {
+      .touch-right { margin-right: 56px; }
+      #touchLeft { margin-left: 56px; }
+      .touch-btn { min-width: 56px; min-height: 42px; font-size: 20px; }
+    }
+    #wrap.game-hidden { display: none; }
+    #overlayRoot {
+      position: fixed; inset: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at center, #14301f 0%, #08130d 70%);
+      padding: 16px;
+      overflow: auto;
+    }
+    #overlayRoot.game-running { display: none; }
+    #overlayRoot.dim-only {
+      display: flex; background: rgba(0,0,0,0.65); pointer-events: auto;
+      align-items: center; justify-content: center;
+    }
+    .panel {
+      background: #102017; border: 2px solid #2f6a47; border-radius: 12px;
+      padding: 28px 32px; max-width: 520px; width: 100%;
+      box-shadow: 0 16px 48px rgba(0,0,0,.5);
+    }
+    .panel h1 { margin: 0 0 8px; font-size: 1.75rem; color: #d7ffe8; }
+    .panel h2 { margin: 0 0 16px; font-size: 1.25rem; color: #bbf2d1; }
+    .panel p.sub { margin: 0 0 20px; color: #84c89a; font-size: 14px; }
+    .panel.hidden { display: none !important; }
+    .menu-btns { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+    .menu-btns button, .panel button.btn {
+      padding: 14px 20px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer;
+      background: linear-gradient(180deg, #2f8d57, #246b43); color: #eafff1;
+      font-weight: 600; transition: filter .15s;
+    }
+    .menu-btns button:hover, .panel button.btn:hover { filter: brightness(1.12); }
+    .menu-btns button.secondary, button.btn.secondary {
+      background: #173124; color: #8fd0a9; font-weight: 500;
+    }
+    .form-row { margin-bottom: 14px; }
+    .form-row label { display: block; margin-bottom: 6px; color: #8fd0a9; font-size: 14px; }
+    .form-row input, .form-row textarea {
+      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2f6a47;
+      background: #0b1912; color: #d7ffe8; font-size: 15px;
+    }
+    .form-row textarea { min-height: 100px; resize: vertical; }
+    .time-big {
+      font-size: 2rem; font-weight: 700; color: #74f0a4; text-align: center;
+      margin: 12px 0 20px; font-variant-numeric: tabular-nums;
+    }
+    .time-big span { color: #bbf2d1; font-size: 1rem; font-weight: 500; }
+    .lb-list { max-height: 320px; overflow-y: auto; margin: 12px 0; }
+    .lb-item {
+      padding: 10px 12px; border-bottom: 1px solid #224d35; font-size: 14px; color: #bbf2d1;
+    }
+    .lb-item strong { color: #eafff1; }
+    .lb-meta { color: #79b391; font-size: 12px; margin-top: 4px; }
+    .attempts-count {
+      color: #d7ffe8;
+      font-weight: 700;
+      text-shadow: 0 0 10px rgba(116, 240, 164, 0.25);
+    }
+    .stars-pick { display: flex; gap: 6px; margin: 8px 0 14px; font-size: 28px; cursor: pointer; user-select: none; }
+    .stars-pick span { opacity: .35; }
+    .stars-pick span.on { opacity: 1; color: #74f0a4; }
+    .dev-rev {
+      border: 1px solid #2f6a47; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px;
+      color: #a7dfc0; max-height: 400px; overflow-y: auto;
+    }
+    .dev-rev .head { color: #eafff1; margin-bottom: 6px; }
+    .linklike {
+      background: none; border: none; color: #74f0a4; cursor: pointer; text-decoration: underline;
+      font-size: 14px; padding: 0; margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+<div id="overlayRoot">
+  <div id="mainMenuPanel" class="panel">
+    <h1>Level Devil by IT Park</h1>
+    <p class="sub">Выберите действие</p>
+    <div class="menu-btns">
+      <button type="button" id="btnPlay">Играть</button>
+      <button type="button" id="btnLeaderboard">Список лидеров</button>
+      <button type="button" id="btnRating">Оценка игры</button>
+    </div>
+  </div>
+  <div id="leaderboardPanel" class="panel hidden">
+    <h2>Список лидеров</h2>
+    <p class="sub">Лучшие прохождения (по времени)</p>
+    <div id="leaderboardList" class="lb-list"></div>
+    <button type="button" class="btn secondary" id="btnLbBack">Назад</button>
+    <button type="button" class="linklike" id="btnDevEnter">Для разработчика</button>
+  </div>
+  <div id="ratingPanel" class="panel hidden">
+    <h2>Оценка игры</h2>
+    <p class="sub">Поделитесь впечатлением</p>
+    <div class="form-row">
+      <label for="revName">Имя (необязательно)</label>
+      <input type="text" id="revName" maxlength="40" placeholder="Как к тебе обращаться">
+    </div>
+    <div class="form-row">
+      <label>Оценка (1–5)</label>
+      <div class="stars-pick" id="starsPick" data-value="0">
+        <span data-n="1">★</span><span data-n="2">★</span><span data-n="3">★</span><span data-n="4">★</span><span data-n="5">★</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="revText">Ваш отзыв</label>
+      <textarea id="revText" maxlength="800" placeholder="Что понравилось, что улучшить…"></textarea>
+    </div>
+    <button type="button" class="btn" id="btnRevSubmit">Отправить отзыв</button>
+    <button type="button" class="btn secondary" id="btnRevBack" style="margin-top:10px">Назад</button>
+  </div>
+  <div id="devPanel" class="panel hidden">
+    <h2>Для разработчика</h2>
+    <p class="sub">История отзывов (код доступа)</p>
+    <div id="devReviewsList" class="dev-rev"></div>
+    <button type="button" class="btn secondary" id="btnDevBack">Назад к лидерам</button>
+  </div>
+  <div id="victoryModal" class="panel hidden" style="max-width:440px">
+    <h2>Поздравляем!</h2>
+    <p class="sub">Вы прошли все уровни. Запишем результат.</p>
+    <div class="time-big" id="victoryTimeSec">—</div>
+    <div class="form-row">
+      <label for="vicName">Имя</label>
+      <input type="text" id="vicName" maxlength="32" placeholder="Ваше имя" required>
+    </div>
+    <div class="form-row">
+      <label for="vicPhone">Номер телефона</label>
+      <input type="text" id="vicPhone" inputmode="numeric" autocomplete="tel" placeholder="+998 (__) ___-__-__">
+    </div>
+    <button type="button" class="btn" id="btnVictorySave">Сохранить в таблицу лидеров</button>
+    <button type="button" class="btn secondary" id="btnVictorySkip" style="margin-top:10px">Пропустить</button>
+  </div>
+</div>
+<div id="wrap" class="game-hidden"><canvas id="game" width="1280" height="720"></canvas></div>
+<div id="rotatePrompt">Поверните телефон в горизонтальный режим</div>
+<div id="touchControls" class="menu-hidden">
+  <div class="touch-left">
+    <button type="button" class="touch-btn" id="touchLeft">◀</button>
+    <button type="button" class="touch-btn" id="touchRight">▶</button>
+  </div>
+  <div class="touch-right">
+    <button type="button" class="touch-btn" id="touchJump">▲</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const W = canvas.width;
+const H = canvas.height;
+
+const WALL_THICK = 24;
+
+const playerImgRight = new Image();
+playerImgRight.src = 'gg1.png';
+const playerImgLeft = new Image();
+playerImgLeft.src = 'gg2.png';
+const doorImg = new Image();
+doorImg.src = 'door1.png';
+const spikeImg = new Image();
+spikeImg.src = 'ship.png';
+const ship2Img = new Image();
+ship2Img.src = 'ship2.png';
+
+const bg1Img = new Image();
+bg1Img.src = 'bg1.png';
+const bg2Img = new Image();
+bg2Img.src = 'bg2.png';
+const bg3Img = new Image();
+bg3Img.src = 'bg3.png';
+
+const SPIKE_UNIT = 48;
+const SPIKE_SQUARE = SPIKE_UNIT * 3;
+
+function loadImage(img) {
+  return new Promise((resolve, reject) => {
+    if (img.complete && img.naturalWidth) return resolve();
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error(img.src));
+  });
+}
+
+const player = {
+  x: 80, y: 400, w: 52, h: 52,
+  vx: 0, vy: 0,
+  facing: 1,
+  speed: 3.2,
+  accel: 0.26,
+  jump: -12.2,
+  gravity: 0.52,
+  maxFall: 14,
+  onGround: false,
+};
+const PLAYER_DRAW_SCALE = 2;
+const PLAYER_VISUAL_GROUND_OFFSET = 10;
+
+let deaths = 0;
+let speedrunStartMs = 0;
+let speedrunSnapshotMs = null;
+let levelIndex = 0;
+let shake = 0;
+let fade = 0;
+let fadeDir = 0;
+let particles = [];
+let keys = {};
+let spawn = { x: 80, y: 400 };
+let gamePlaying = false;
+let victoryFormOpen = false;
+let simDt = 16;
+let deathInvulnUntil = 0;
+let deathRespawnUntil = 0;
+
+const MENU_BTN = { x: W - 164, y: 9, w: 142, h: 44 };
+const HUD_SQUARE_BTN_SIZE = 44;
+const HUD_BTN_GAP = 10;
+const HELP_BTN = { x: MENU_BTN.x - HUD_SQUARE_BTN_SIZE - HUD_BTN_GAP, y: MENU_BTN.y, w: HUD_SQUARE_BTN_SIZE, h: HUD_SQUARE_BTN_SIZE };
+const FULLSCREEN_BTN = {
+  x: MENU_BTN.x + MENU_BTN.w - HUD_SQUARE_BTN_SIZE,
+  y: MENU_BTN.y + MENU_BTN.h + HUD_BTN_GAP,
+  w: HUD_SQUARE_BTN_SIZE,
+  h: HUD_SQUARE_BTN_SIZE
+};
+const CONTROL_HINT_TEXT = '← → или A D — идти\nПробел / ↑ / W — прыжок с пола\nR — заново уровень';
+
+function menuButtonRect() {
+  return MENU_BTN;
+}
+
+function helpButtonRect() {
+  return HELP_BTN;
+}
+
+function fullscreenButtonRect() {
+  return FULLSCREEN_BTN;
+}
+
+function isPointInRect(px, py, r) {
+  return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+}
+
+function isFullscreenActive() {
+  return !!document.fullscreenElement;
+}
+
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent || '');
+}
+
+function isPortraitViewport() {
+  return window.innerHeight > window.innerWidth;
+}
+
+function updateRotatePromptVisibility() {
+  const prompt = document.getElementById('rotatePrompt');
+  if (!prompt) return;
+  const shouldShow = gamePlaying && isMobileDevice() && isPortraitViewport();
+  prompt.classList.toggle('show', shouldShow);
+}
+
+async function tryLockLandscape() {
+  try {
+    if (screen.orientation && typeof screen.orientation.lock === 'function') {
+      await screen.orientation.lock('landscape');
+    }
+  } catch (_) {}
+}
+
+async function toggleFullscreen() {
+  try {
+    if (isFullscreenActive()) {
+      await document.exitFullscreen();
+    } else {
+      await document.documentElement.requestFullscreen();
+      await tryLockLandscape();
+    }
+  } catch (_) {}
+  updateRotatePromptVisibility();
+}
+
+async function prepareLandscapeForMobile() {
+  if (!isMobileDevice()) return;
+  try {
+    if (!isFullscreenActive()) await document.documentElement.requestFullscreen();
+  } catch (_) {}
+  await tryLockLandscape();
+  updateRotatePromptVisibility();
+}
+
+function predictPlayerLandX(px, py, pvx, pvy) {
+  let x = px;
+  let y = py;
+  let vx = pvx;
+  let vy = pvy;
+  const g = player.gravity;
+  const maxF = player.maxFall;
+  const floorY = 640 - player.h;
+  for (let i = 0; i < 400; i++) {
+    vy = Math.min(maxF, vy + g);
+    y += vy;
+    x += vx;
+    if (y >= floorY) {
+      return Math.max(WALL_THICK + 2, Math.min(W - WALL_THICK - player.w - 2, x));
+    }
+  }
+  return x;
+}
+
+function tryJump() {
+  if (!gamePlaying || victoryFormOpen) return;
+  let canJump = player.onGround;
+  if (!canJump && levelIndex === 1) {
+    const L2 = LEVELS[1];
+    const pThird = L2 && L2.platforms ? L2.platforms[2] : null;
+    if (pThird && pThird.fragileAir && pThird.stepped && !pThird.hidden) {
+      const feet = player.y + player.h;
+      const onThirdTop =
+        feet >= pThird.y - 6 && feet <= pThird.y + 18 &&
+        player.x + player.w > pThird.x + 2 && player.x < pThird.x + pThird.w - 2;
+      if (onThirdTop) canJump = true;
+    }
+  }
+  if (!canJump) return;
+  const L3 = levelIndex === 2 ? LEVELS[2] : null;
+  const lightJump = L3 && L3.l3 && L3.l3.baitExpanded;
+  player.vy = lightJump ? player.jump * 1.58 : player.jump;
+  player.onGround = false;
+}
+
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+  keys[e.code] = true;
+  if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+    e.preventDefault();
+    if (!e.repeat) tryJump();
+  }
+  if (e.code === 'KeyR' && !e.repeat && gamePlaying && !victoryFormOpen) restartLevel();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+function restartLevel() {
+  loadLevel(levelIndex);
+}
+
+function rectOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function spikeTrim(img) {
+  const iw = img.naturalWidth || 1;
+  const ih = img.naturalHeight || 1;
+  return { sx: iw * 0.07, sy: ih * 0.05, sw: iw * 0.86, sh: ih * 0.90 };
+}
+
+const SPIKE_DRAW_SCALE = 1.28;
+const SPIKE_VISUAL_GROUND_OFFSET = 16;
+const DOOR_VISUAL_GROUND_OFFSET = 10;
+
+function drawSpikeTrimmed(img, dx, dy, dw, dh) {
+  if (!img.naturalWidth) return;
+  const { sx, sy, sw, sh } = spikeTrim(img);
+  const sw2 = dw * SPIKE_DRAW_SCALE;
+  const sh2 = dh * SPIKE_DRAW_SCALE;
+  const dx2 = dx - (sw2 - dw) / 2;
+  const dy2 = dy + dh - sh2 + SPIKE_VISUAL_GROUND_OFFSET;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, sx, sy, sw, sh, dx2, dy2, sw2, sh2);
+}
+
+function spikeHitbox(s) {
+  if (s.square) {
+    const padX = s.s * 0.1;
+    const padTop = s.s * 0.12;
+    const padBot = s.s * 0.06;
+    return {
+      x: s.x + padX,
+      y: s.y + padTop,
+      w: s.s - 2 * padX,
+      h: s.s - padTop - padBot,
+    };
+  }
+  if (s.long) {
+    const padX = Math.max(8, s.w * 0.03);
+    const padTop = s.h * 0.22;
+    const padBot = 2;
+    return {
+      x: s.x + padX,
+      y: s.y + padTop,
+      w: Math.max(24, s.w - 2 * padX),
+      h: Math.max(12, s.h - padTop - padBot),
+    };
+  }
+  const padX = s.w * 0.14;
+  const padTop = s.h * 0.2;
+  const padBot = 2;
+  return {
+    x: s.x + padX,
+    y: s.y + padTop,
+    w: Math.max(12, s.w - 2 * padX),
+    h: Math.max(10, s.h - padTop - padBot),
+  };
+}
+
+function killPlayer() {
+  deaths++;
+  deathInvulnUntil = performance.now() + 550;
+  deathRespawnUntil = performance.now() + 720;
+  shake = 12;
+  spawnParticles(player.x + player.w / 2, player.y + player.h / 2);
+  player.x = spawn.x;
+  player.y = spawn.y;
+  player.vx = 0;
+  player.vy = 0;
+  player.onGround = false;
+  if (levelHooks.onDeath) levelHooks.onDeath();
+}
+
+function spawnParticles(x, y) {
+  for (let i = 0; i < 58; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const speed = 1.8 + Math.random() * 2.4;
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed,
+      life: 95 + Math.random() * 55,
+      char: Math.random() > 0.5 ? '1' : '0',
+    });
+  }
+}
+
+let levelHooks = { onDeath: null, onUpdate: null, onLateUpdate: null, onDraw: null };
+
+const LEVELS = [
+  {
+    title: 'Уровень 1',
+    spawn: { x: 60, y: 520 },
+    platforms: [
+      { x: 0, y: 640, w: W, h: 80 },
+    ],
+    spikes: [
+      { x: 600, y: 640 - 48, w: 56, h: 48 },
+    ],
+    door: { x: 1040, y: 520, w: 72, h: 120 },
+    init() {
+      levelHooks.onUpdate = null;
+      levelHooks.onLateUpdate = null;
+      levelHooks.onDeath = null;
+      levelHooks.onDraw = null;
+    },
+  },
+  {
+    title: 'Уровень 2',
+    spawn: { x: 80, y: 468 },
+    platforms: [
+      { x: 0, y: 520, w: 280, h: 28 },
+      { x: 340, y: 480, w: 260, h: 28, moveVx: 0, _x0: 340 },
+      { x: 660, y: 440, w: 260, h: 28, fragileAir: true, stepped: false, t: 0, _y0: 440, _x0: 660 },
+      { x: 980, y: 400, w: 300, h: 28 },
+      { x: 0, y: 640, w: W, h: 80 },
+    ],
+    spikes: [
+      { x: WALL_THICK, y: 594, w: W - 2 * WALL_THICK, h: 46, long: true },
+    ],
+    door: { x: 1080, y: 280, w: 72, h: 120 },
+    init() {
+      const L = LEVELS[1];
+      const pSpawn = L.platforms[0];
+      const pSecond = L.platforms[1];
+      const pThird = L.platforms[2];
+      const pFourth = L.platforms[3];
+      pSecond.x = pSecond._x0;
+      pSecond.moveVx = 0;
+      pThird.x = pThird._x0;
+      pThird.y = pThird._y0;
+      pThird.stepped = false;
+      pThird.t = 0;
+      pThird.hidden = false;
+      levelHooks.onUpdate = () => {
+        const dt = simDt;
+        const stopBefore = pFourth.x - 14;
+        const step = (pSecond.moveVx || 0) * (dt / 16);
+        if (step && pSecond.x + pSecond.w < stopBefore) {
+          pSecond.x += step;
+          if (pSecond.x + pSecond.w > stopBefore) pSecond.x = stopBefore - pSecond.w;
+          if (player.onGround) {
+            const body = { x: player.x, y: player.y, w: player.w, h: player.h };
+            if (rectOverlap(body, pSecond)) {
+              player.x += step;
+              collideSideWalls();
+            }
+          }
+        }
+        if (pThird.stepped) {
+          pThird.t++;
+          if (pThird.t > 6) {
+            const dy = 5.2 * (dt / 16);
+            const prevTop = pThird.y;
+            const prevBottom = player.y + player.h;
+            const ridingThirdBeforeMove =
+              player.vy >= 0 &&
+              prevBottom >= prevTop - 4 && prevBottom <= prevTop + 12 &&
+              player.x + player.w > pThird.x + 2 && player.x < pThird.x + pThird.w - 2;
+            pThird.y += dy;
+            // Переносим игрока только если он реально стоял сверху платформы.
+            // Это сохраняет возможность прыжка и не вызывает "телепортов" внутри платформы.
+            if (ridingThirdBeforeMove) {
+              player.y += dy;
+            }
+          }
+          if (pThird.y > H + 80) pThird.hidden = true;
+        }
+      };
+      levelHooks.onDeath = () => {
+        pSecond.x = pSecond._x0;
+        pSecond.moveVx = 0;
+        pThird.x = pThird._x0;
+        pThird.y = pThird._y0;
+        pThird.stepped = false;
+        pThird.t = 0;
+        pThird.hidden = false;
+      };
+      levelHooks.onLateUpdate = null;
+      levelHooks.onDraw = null;
+    },
+  },
+  {
+    title: 'Уровень 3',
+    spawn: { x: 70, y: 520 },
+    platforms: [
+      { x: 0, y: 640, w: W, h: 80 },
+    ],
+    spikes: [
+      { x: 614, y: 592, w: 48, h: 46, bait: true },
+      { x: 574, y: 592, w: 44, h: 46, multiBait: true, hidden: true },
+      { x: 626, y: 592, w: 44, h: 46, multiBait: true, hidden: true },
+      { x: 678, y: 592, w: 44, h: 46, multiBait: true, hidden: true },
+    ],
+    door: { x: 1040, y: 520, w: 72, h: 120, runaway: true, baseX: 1040 },
+    init() {
+      const L = LEVELS[2];
+      const d = L.door;
+      L.l3 = {
+        doorReachedRight: false,
+        doorOnLeft: false,
+        baitExpanded: false,
+      };
+      // Дверь справа стоит в том же месте, что и дверь в Уровне 1
+      const level1DoorX = LEVELS[0].door.x;
+      d.x = level1DoorX;
+      d.hidden = false;
+      L.spikes.forEach(s => {
+        if (s.bait) s.hidden = false;
+        if (s.multiBait) s.hidden = true;
+      });
+      levelHooks.onUpdate = () => {
+        const sp = L.spawn;
+        if (!L.l3.doorReachedRight) {
+          const near = Math.abs(player.x + player.w / 2 - (d.x + d.w / 2)) < 160;
+          if (near) {
+            d.x += 4.8;
+            if (d.x + d.w >= W - WALL_THICK - 1) {
+              d.hidden = true;
+              L.l3.doorReachedRight = true;
+            }
+          }
+        }
+        if (L.l3.doorReachedRight && !L.l3.doorOnLeft && player.x + player.w >= W - WALL_THICK) {
+          L.l3.doorOnLeft = true;
+          L.l3.baitExpanded = true;
+          // При появлении слева немного правее, чем сейчас
+          d.x = sp.x + 105;
+          d.y = sp.y;
+          d.hidden = false;
+          const bait = L.spikes.find(s => s.bait);
+          if (bait) bait.hidden = true;
+          L.spikes.filter(s => s.multiBait).forEach(s => { s.hidden = false; });
+        }
+      };
+      levelHooks.onDeath = () => {
+        L.l3 = { doorReachedRight: false, doorOnLeft: false, baitExpanded: false };
+        d.x = level1DoorX;
+        d.hidden = false;
+        L.spikes.forEach(s => {
+          if (s.bait) s.hidden = false;
+          if (s.multiBait) s.hidden = true;
+        });
+      };
+      levelHooks.onLateUpdate = null;
+      levelHooks.onDraw = null;
+    },
+  },
+  {
+    title: 'Уровень 4',
+    spawn: { x: W - WALL_THICK - 72, y: 520 },
+    platforms: [
+      { x: 0, y: 640, w: W, h: 80 },
+    ],
+    spikes: [
+      { x: W - WALL_THICK - 320, y: 594, w: 48, h: 46 },
+      { x: W / 2 - 24, y: 594, w: 48, h: 46 },
+      { x: WALL_THICK + 80, y: 594, w: 48, h: 46 },
+    ],
+    door: { x: WALL_THICK + 16, y: 520, w: 72, h: 120 },
+    invertControls: true,
+    deadlyBackWall: true,
+    init() {
+      levelHooks.onUpdate = null;
+      levelHooks.onDeath = null;
+      levelHooks.onLateUpdate = () => {
+        if (levelIndex !== 3) return;
+        if (player.x + player.w >= W - WALL_THICK && performance.now() >= deathInvulnUntil) killPlayer();
+      };
+      levelHooks.onDraw = null;
+    },
+  },
+  {
+    title: 'Уровень 5',
+    spawn: { x: 50, y: 520 },
+    platforms: [
+      { x: 0, y: 640, w: 320, h: 80 },
+      { x: 560, y: 640, w: W - 560, h: 80 },
+      { x: 320, y: 520, w: 240, h: 24, deadly: true },
+      { x: 320, y: 640, w: 240, h: 80, phantomFloor: true },
+    ],
+    spikes: [],
+    door: { x: 1040, y: 520, w: 72, h: 120 },
+    init() {
+      levelHooks.onUpdate = null;
+      levelHooks.onDeath = null;
+      levelHooks.onLateUpdate = null;
+      levelHooks.onDraw = null;
+    },
+  },
+];
+
+function loadLevel(i) {
+  levelIndex = i;
+  const cssBgFile = (i === 1) ? 'bg2.png' : 'bg1.png';
+  const cssBgUrl = "url('" + cssBgFile + "')";
+  document.documentElement.style.backgroundImage = cssBgUrl;
+  document.body.style.backgroundImage = cssBgUrl;
+
+  deathInvulnUntil = 0;
+  deathRespawnUntil = 0;
+  const L = LEVELS[i];
+  spawn = { ...L.spawn };
+  player.x = spawn.x;
+  player.y = spawn.y;
+  player.vx = 0;
+  player.vy = 0;
+  player.onGround = false;
+  player.facing = 1;
+  levelHooks = { onDeath: null, onUpdate: null, onLateUpdate: null, onDraw: null };
+  if (L.init) L.init();
+  L.platforms.forEach(p => {
+    if (p.l4runner && p._x0 != null) p.x = p._x0;
+    if (typeof p.moveVx === 'number' && p._x0 != null) {
+      p.x = p._x0;
+      p.moveVx = 0;
+    }
+    if (p.fragileAir) {
+      p.hidden = false;
+      p.stepped = false;
+      p.t = 0;
+      if (p._y0 != null) p.y = p._y0;
+      if (p._x0 != null) p.x = p._x0;
+    }
+    if (p.fragile) {
+      p.hidden = false;
+      p.stepped = false;
+      p.t = 0;
+      if (p._y0 != null) p.y = p._y0;
+    }
+  });
+  if (L.door && L.door.runaway) L.door.x = L.door.baseX;
+}
+
+function nextLevel() {
+  fadeDir = 1;
+  fade = 0;
+}
+
+function solidPlatforms(L) {
+  return L.platforms.filter(p => !p.hidden);
+}
+
+function collidePlatforms(axis) {
+  const L = LEVELS[levelIndex];
+  const pls = solidPlatforms(L);
+  const body = { x: player.x, y: player.y, w: player.w, h: player.h };
+  let landed = false;
+
+  for (const p of pls) {
+    if (!rectOverlap(body, p)) continue;
+    if (p.deadly) { killPlayer(); return false; }
+    if (axis === 'x') {
+      const ox = player.vx > 0
+        ? (p.x - (player.x + player.w))
+        : ((p.x + p.w) - player.x);
+      player.x += ox;
+      player.vx = 0;
+    } else {
+      const prevBottom = player.y + player.h - player.vy;
+      if (player.vy > 0 && prevBottom <= p.y + 2) {
+        player.y = p.y - player.h;
+        player.vy = 0;
+        landed = true;
+        if (p.fragile && !p.stepped) p.stepped = true;
+        if (p.fragileAir && !p.stepped) {
+          p.stepped = true;
+          if (levelIndex === 1 && LEVELS[1].platforms[1])
+            LEVELS[1].platforms[1].moveVx = 5.2;
+        }
+      } else if (player.vy < 0) {
+        player.y = p.y + p.h;
+        player.vy = 0;
+      } else {
+        const feet = player.y + player.h;
+        const ridePadDown = (p.fragileAir && p.stepped) ? 20 : 12;
+        const ridingTop = feet >= p.y - 4 && feet <= p.y + ridePadDown &&
+          player.x + player.w > p.x + 1 && player.x < p.x + p.w - 1;
+        if (ridingTop) {
+          player.y = p.y - player.h;
+          player.vy = 0;
+          landed = true;
+          if (p.fragile && !p.stepped) p.stepped = true;
+          if (p.fragileAir && !p.stepped) {
+            p.stepped = true;
+            if (levelIndex === 1 && LEVELS[1].platforms[1])
+              LEVELS[1].platforms[1].moveVx = 5.2;
+          }
+        } else {
+          const push = player.x + player.w / 2 < p.x + p.w / 2
+            ? (p.x - player.w) : (p.x + p.w);
+          player.x = push;
+        }
+      }
+    }
+    body.x = player.x;
+    body.y = player.y;
+  }
+  return landed;
+}
+
+function worldWallRects() {
+  const t = WALL_THICK;
+  return [
+    { x: 0, y: 0, w: t, h: H },
+    { x: W - t, y: 0, w: t, h: H },
+  ];
+}
+
+function collideSideWalls() {
+  const body = { x: player.x, y: player.y, w: player.w, h: player.h };
+  for (const wall of worldWallRects()) {
+    if (!rectOverlap(body, wall)) continue;
+    const penL = (player.x + player.w) - wall.x;
+    const penR = (wall.x + wall.w) - player.x;
+    if (penL < penR) player.x = wall.x - player.w;
+    else player.x = wall.x + wall.w;
+    player.vx = 0;
+    body.x = player.x;
+  }
+}
+
+let lastTs = 0;
+
+const LS_LEADER = 'itpark_leaderboard';
+const LS_REVIEWS = 'itpark_reviews';
+const DEV_CODE = '2525';
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function getPhoneDigits998(val) {
+  let d = String(val).replace(/\D/g, '');
+  if (d.startsWith('998')) d = d.slice(3);
+  return d.slice(0, 9);
+}
+
+function isPhoneComplete(val) {
+  const d = getPhoneDigits998(val);
+  return d.length === 9;
+}
+
+function applyPhoneMaskInput(el) {
+  let d = el.value.replace(/\D/g, '');
+  if (d.startsWith('998')) d = d.slice(3);
+  d = d.slice(0, 9);
+  if (d.length === 0) {
+    el.value = '+998 (';
+    return;
+  }
+  const p1 = d.slice(0, 2);
+  const p2 = d.slice(2, 5);
+  const p3 = d.slice(5, 7);
+  const p4 = d.slice(7, 9);
+  let out = '+998 (' + p1;
+  if (p1.length < 2) {
+    el.value = out;
+    return;
+  }
+  out += ')';
+  if (p2.length === 0) {
+    el.value = out;
+    return;
+  }
+  out += ' ' + p2;
+  if (p3.length === 0) {
+    el.value = out;
+    return;
+  }
+  out += '-' + p3;
+  if (p4.length === 0) {
+    el.value = out;
+    return;
+  }
+  out += '-' + p4;
+  el.value = out;
+}
+
+function saveLeaderboardEntry(name, phoneRaw, timeMs, deathsCount) {
+  const digits = getPhoneDigits998(phoneRaw);
+  const phoneShow = phoneRaw.trim() || '+998 (__) ___-__-__';
+  let arr = [];
+  try {
+    arr = JSON.parse(localStorage.getItem(LS_LEADER) || '[]');
+  } catch (_) {}
+  arr.push({
+    name: (name || '').trim() || 'Без имени',
+    phone: phoneShow,
+    timeMs,
+    timeLabel: formatSpeedrun(timeMs),
+    date: new Date().toISOString(),
+    digits,
+    deaths: deathsCount != null ? deathsCount : 0,
+  });
+  arr.sort((a, b) => a.timeMs - b.timeMs);
+  localStorage.setItem(LS_LEADER, JSON.stringify(arr.slice(0, 50)));
+}
+
+function saveReviewEntry(name, stars, text) {
+  let arr = [];
+  try {
+    arr = JSON.parse(localStorage.getItem(LS_REVIEWS) || '[]');
+  } catch (_) {}
+  arr.unshift({
+    name: (name || '').trim() || 'Аноним',
+    stars: Math.max(1, Math.min(5, stars | 0)),
+    text: (text || '').trim(),
+    date: new Date().toISOString(),
+  });
+  localStorage.setItem(LS_REVIEWS, JSON.stringify(arr.slice(0, 200)));
+}
+
+function renderLeaderboardList() {
+  const list = document.getElementById('leaderboardList');
+  let arr = [];
+  try {
+    arr = JSON.parse(localStorage.getItem(LS_LEADER) || '[]');
+  } catch (_) {}
+  if (!arr.length) {
+    list.innerHTML = '<div class="lb-item">Пока пусто — пройди игру и сохрани результат!</div>';
+    return;
+  }
+  list.innerHTML = arr.map((e, i) => {
+    const lbl = e.timeLabel || formatSpeedrun(e.timeMs);
+    const deathsStr = e.deaths != null
+      ? ' · <span class="attempts-count">' + escapeHtml(String(e.deaths)) + ' попыток</span>'
+      : '';
+    return '<div class="lb-item"><strong>#' + (i + 1) + ' ' + escapeHtml(e.name) + '</strong> — ' + escapeHtml(lbl) +
+      '<div class="lb-meta">' + escapeHtml(e.phone) + ' · ' + new Date(e.date).toLocaleString() + deathsStr + '</div></div>';
+  }).join('');
+}
+
+function renderDevReviews() {
+  const box = document.getElementById('devReviewsList');
+  let arr = [];
+  try {
+    arr = JSON.parse(localStorage.getItem(LS_REVIEWS) || '[]');
+  } catch (_) {}
+  if (!arr.length) {
+    box.innerHTML = '<p>Отзывов пока нет.</p>';
+    return;
+  }
+  box.innerHTML = arr.map(r => {
+    const st = '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars);
+    return '<div style="margin-bottom:12px;border-bottom:1px solid #2f6a47;padding-bottom:10px">' +
+      '<div class="head">' + escapeHtml(r.name) + ' &nbsp; ' + st + '</div>' +
+      '<div style="color:#79b391;font-size:11px">' + new Date(r.date).toLocaleString() + '</div>' +
+      '<div style="margin-top:6px;white-space:pre-wrap">' + escapeHtml(r.text || '—') + '</div></div>';
+  }).join('');
+}
+
+const overlayRoot = () => document.getElementById('overlayRoot');
+const wrapEl = () => document.getElementById('wrap');
+const touchControlsEl = () => document.getElementById('touchControls');
+
+function bindTouchHoldButton(buttonId, keyCodes) {
+  const btn = document.getElementById(buttonId);
+  if (!btn) return;
+  const setPressed = pressed => {
+    for (const code of keyCodes) keys[code] = pressed;
+  };
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    setPressed(true);
+    try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  const release = e => {
+    if (e) e.preventDefault();
+    setPressed(false);
+  };
+  btn.addEventListener('pointerup', release);
+  btn.addEventListener('pointercancel', release);
+  btn.addEventListener('pointerleave', release);
+}
+
+function hideAllMenuPanels() {
+  document.querySelectorAll('#overlayRoot .panel').forEach(p => p.classList.add('hidden'));
+}
+
+function showMainMenu() {
+  gamePlaying = false;
+  victoryFormOpen = false;
+  hideAllMenuPanels();
+  document.getElementById('mainMenuPanel').classList.remove('hidden');
+  overlayRoot().classList.remove('game-running', 'dim-only');
+  wrapEl().classList.add('game-hidden');
+  touchControlsEl().classList.add('menu-hidden');
+  updateRotatePromptVisibility();
+}
+
+async function startGameFromMenu() {
+  hideAllMenuPanels();
+  overlayRoot().classList.add('game-running');
+  overlayRoot().classList.remove('dim-only');
+  wrapEl().classList.remove('game-hidden');
+  touchControlsEl().classList.remove('menu-hidden');
+  deaths = 0;
+  speedrunStartMs = performance.now();
+  speedrunSnapshotMs = null;
+  fade = 0;
+  fadeDir = 0;
+  loadLevel(0);
+  gamePlaying = true;
+  victoryFormOpen = false;
+  await prepareLandscapeForMobile();
+  updateRotatePromptVisibility();
+}
+
+function openVictoryModal(timeMs) {
+  const t = Math.max(0, timeMs | 0);
+  document.getElementById('victoryTimeSec').textContent = formatSpeedrun(t);
+  document.getElementById('vicName').value = '';
+  const ph = document.getElementById('vicPhone');
+  ph.value = '+998 (';
+  hideAllMenuPanels();
+  document.getElementById('victoryModal').classList.remove('hidden');
+  overlayRoot().classList.remove('game-running');
+  overlayRoot().classList.add('dim-only');
+}
+
+function closeVictoryOverlay() {
+  document.getElementById('victoryModal').classList.add('hidden');
+  overlayRoot().classList.remove('dim-only');
+  overlayRoot().classList.add('game-running');
+}
+
+function finishVictoryToMenu() {
+  victoryFormOpen = false;
+  document.getElementById('victoryModal').classList.add('hidden');
+  overlayRoot().classList.remove('dim-only');
+  speedrunSnapshotMs = null;
+  fade = 0;
+  fadeDir = 0;
+  showMainMenu();
+}
+
+window.addEventListener('resize', updateRotatePromptVisibility);
+window.addEventListener('orientationchange', updateRotatePromptVisibility);
+document.addEventListener('fullscreenchange', updateRotatePromptVisibility);
+
+function initMenus() {
+  bindTouchHoldButton('touchLeft', ['ArrowLeft', 'KeyA']);
+  bindTouchHoldButton('touchRight', ['ArrowRight', 'KeyD']);
+  const touchJump = document.getElementById('touchJump');
+  if (touchJump) {
+    touchJump.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      tryJump();
+    });
+  }
+
+  const vicPhone = document.getElementById('vicPhone');
+  vicPhone.addEventListener('input', () => applyPhoneMaskInput(vicPhone));
+  vicPhone.addEventListener('focus', () => {
+    if (vicPhone.value.length < 7) vicPhone.value = '+998 (';
+  });
+
+  document.getElementById('btnPlay').addEventListener('click', startGameFromMenu);
+
+  document.getElementById('btnLeaderboard').addEventListener('click', () => {
+    hideAllMenuPanels();
+    renderLeaderboardList();
+    document.getElementById('leaderboardPanel').classList.remove('hidden');
+  });
+
+  document.getElementById('btnLbBack').addEventListener('click', showMainMenu);
+
+  document.getElementById('btnRating').addEventListener('click', () => {
+    hideAllMenuPanels();
+    document.getElementById('revName').value = '';
+    document.getElementById('revText').value = '';
+    const sp = document.getElementById('starsPick');
+    sp.dataset.value = '0';
+    sp.querySelectorAll('span').forEach(s => s.classList.remove('on'));
+    document.getElementById('ratingPanel').classList.remove('hidden');
+  });
+
+  document.getElementById('btnRevBack').addEventListener('click', showMainMenu);
+
+  document.getElementById('starsPick').addEventListener('click', e => {
+    const span = e.target.closest('span[data-n]');
+    if (!span) return;
+    const n = +span.dataset.n;
+    const sp = document.getElementById('starsPick');
+    sp.dataset.value = String(n);
+    sp.querySelectorAll('span').forEach(s => {
+      s.classList.toggle('on', +s.dataset.n <= n);
+    });
+  });
+
+  document.getElementById('btnRevSubmit').addEventListener('click', () => {
+    const stars = +document.getElementById('starsPick').dataset.value;
+    if (stars < 1) {
+      alert('Поставь оценку звёздами (1–5).');
+      return;
+    }
+    const name = document.getElementById('revName').value;
+    const text = document.getElementById('revText').value;
+    if (!(text || '').trim()) {
+      alert('Напиши хотя бы пару слов.');
+      return;
+    }
+    saveReviewEntry(name, stars, text);
+    alert('Спасибо! Отзыв сохранён.');
+    showMainMenu();
+  });
+
+  document.getElementById('btnDevEnter').addEventListener('click', () => {
+    const c = prompt('Код разработчика (4 цифры):');
+    if (c !== DEV_CODE) {
+      if (c != null) alert('Неверный код.');
+      return;
+    }
+    hideAllMenuPanels();
+    renderDevReviews();
+    document.getElementById('devPanel').classList.remove('hidden');
+  });
+
+  document.getElementById('btnDevBack').addEventListener('click', () => {
+    hideAllMenuPanels();
+    renderLeaderboardList();
+    document.getElementById('leaderboardPanel').classList.remove('hidden');
+  });
+
+  document.getElementById('btnVictorySave').addEventListener('click', () => {
+    const name = document.getElementById('vicName').value;
+    if (!(name || '').trim()) {
+      alert('Введи имя.');
+      return;
+    }
+    if (!isPhoneComplete(vicPhone.value)) {
+      alert('Введи полный номер по шаблону +998 (__) ___-__-__');
+      return;
+    }
+    saveLeaderboardEntry(name, vicPhone.value, speedrunSnapshotMs, deaths);
+    finishVictoryToMenu();
+  });
+
+  document.getElementById('btnVictorySkip').addEventListener('click', () => {
+    finishVictoryToMenu();
+  });
+
+  showMainMenu();
+
+  canvas.addEventListener('pointerdown', e => {
+    if (!gamePlaying || victoryFormOpen || e.button !== 0) return;
+    const r = canvas.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (canvas.width / r.width);
+    const my = (e.clientY - r.top) * (canvas.height / r.height);
+    const hb = helpButtonRect();
+    if (isPointInRect(mx, my, hb)) {
+      alert(CONTROL_HINT_TEXT);
+      return;
+    }
+    const fb = fullscreenButtonRect();
+    if (isPointInRect(mx, my, fb)) {
+      toggleFullscreen();
+      return;
+    }
+    const mb = menuButtonRect();
+    if (isPointInRect(mx, my, mb))
+      showMainMenu();
+  });
+}
+
+function update(ts) {
+  const dt = Math.min(32, ts - lastTs || 16);
+  lastTs = ts;
+  simDt = dt;
+  if (!gamePlaying || victoryFormOpen) return;
+
+  const L = LEVELS[levelIndex];
+
+  if (fadeDir !== 0) {
+    fade += fadeDir * dt * 0.004;
+    if (fade >= 1) {
+      fade = 1;
+      if (levelIndex + 1 < LEVELS.length) {
+        loadLevel(levelIndex + 1);
+        fadeDir = -1;
+      } else {
+        fadeDir = 0;
+        victoryFormOpen = true;
+        openVictoryModal(speedrunSnapshotMs);
+      }
+    }
+    if (fadeDir < 0 && fade <= 0) {
+      fade = 0;
+      fadeDir = 0;
+    }
+    if (fadeDir < 0) fade = Math.max(0, fade);
+    return;
+  }
+
+  if (deathRespawnUntil > 0) {
+    if (performance.now() >= deathRespawnUntil) deathRespawnUntil = 0;
+    else {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const q = particles[i];
+        q.x += q.vx;
+        q.y += q.vy;
+        q.vy += 0.03;
+        q.life -= dt * 0.02;
+        if (q.life <= 0) particles.splice(i, 1);
+      }
+      if (shake > 0) shake *= 0.85;
+      if (shake < 0.5) shake = 0;
+      return;
+    }
+  }
+
+  if (levelHooks.onUpdate) levelHooks.onUpdate();
+
+  let left = !!(keys['ArrowLeft'] || keys['KeyA']);
+  let right = !!(keys['ArrowRight'] || keys['KeyD']);
+  if (L.invertControls) { const t = left; left = right; right = t; }
+  const spMul = 1;
+  const targetVx = right ? player.speed * spMul : (left ? -player.speed * spMul : 0);
+  const t = Math.min(1, player.accel * (dt / 16));
+  player.vx += (targetVx - player.vx) * t;
+  if (right) player.facing = 1; else if (left) player.facing = -1;
+
+  player.vy = Math.min(player.maxFall, player.vy + player.gravity);
+
+  player.x += player.vx;
+  collidePlatforms('x');
+  if (L.deadlyBackWall && player.x + player.w >= W - WALL_THICK && performance.now() >= deathInvulnUntil) { killPlayer(); return; }
+  collideSideWalls();
+
+  player.y += player.vy;
+  const landed = collidePlatforms('y');
+  player.onGround = landed;
+
+  if (levelHooks.onLateUpdate) levelHooks.onLateUpdate();
+
+  if (player.y > H + 120) killPlayer();
+
+  const pDead = { x: player.x, y: player.y, w: player.w, h: player.h };
+  for (const s of L.spikes) {
+    if (s.hidden) continue;
+    if (rectOverlap(pDead, spikeHitbox(s))) killPlayer();
+  }
+
+  const pbox = { x: player.x, y: player.y, w: player.w, h: player.h };
+  const door = L.door;
+  if (fadeDir === 0 && door && !door.hidden && rectOverlap(pbox, { x: door.x, y: door.y, w: door.w, h: door.h })) {
+    if (door.fake) killPlayer();
+    else {
+      if (levelIndex === LEVELS.length - 1 && speedrunSnapshotMs === null)
+        speedrunSnapshotMs = performance.now() - speedrunStartMs;
+      nextLevel();
+    }
+  }
+  if (fadeDir === 0 && L.realDoor && rectOverlap(pbox, { x: L.realDoor.x, y: L.realDoor.y, w: L.realDoor.w, h: L.realDoor.h }))
+    nextLevel();
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const q = particles[i];
+    q.x += q.vx;
+    q.y += q.vy;
+    q.vy += 0.03;
+    q.life -= dt * 0.02;
+    if (q.life <= 0) particles.splice(i, 1);
+  }
+  if (shake > 0) shake *= 0.85;
+  if (shake < 0.5) shake = 0;
+}
+
+function drawGrid() {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function formatSpeedrun(ms) {
+  if (ms < 0) ms = 0;
+  if (ms < 60000) {
+    const s = ms / 1000;
+    return s.toFixed(3) + ' с';
+  }
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function speedrunDisplayMs() {
+  if (speedrunSnapshotMs != null) return speedrunSnapshotMs;
+  return performance.now() - speedrunStartMs;
+}
+
+function drawDeathBackdrop() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(236, 255, 245, 0.38)';
+  ctx.strokeStyle = 'rgba(12, 34, 22, 0.62)';
+  ctx.shadowColor = 'rgba(116, 240, 164, 0.42)';
+  ctx.shadowBlur = 18;
+  ctx.lineWidth = 4;
+  const t = String(deaths);
+  const fontPx = t.length >= 3 ? 220 : (t.length === 2 ? 260 : 280);
+  ctx.font = 'bold ' + fontPx + 'px Segoe UI, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const squeeze = t.length === 2 ? 0.62 : (t.length >= 3 ? 0.80 : 1);
+  const x = W / 2;
+  const y = H / 2 + 28;
+  ctx.save();
+  if (squeeze !== 1) {
+    ctx.translate(x, y);
+    ctx.scale(squeeze, 1);
+    ctx.strokeText(t, 0, 0);
+    ctx.fillText(t, 0, 0);
+  } else {
+    ctx.strokeText(t, x, y);
+    ctx.fillText(t, x, y);
+  }
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawSideWalls() {
+  const t = WALL_THICK;
+  ctx.fillStyle = '#1e1e2a';
+  ctx.strokeStyle = '#353548';
+  ctx.lineWidth = 2;
+  ctx.fillRect(0, 0, t, H);
+  ctx.strokeRect(0.5, 0.5, t - 1, H - 1);
+  ctx.fillRect(W - t, 0, t, H);
+  ctx.strokeRect(W - t + 0.5, 0.5, t - 1, H - 1);
+}
+
+function drawPlatforms(L) {
+  const plainSpecial = levelIndex === 1 || levelIndex === 2;
+  for (const p of solidPlatforms(L)) {
+    if (p.phantomFloor) continue;
+    const frag = !plainSpecial && (p.fragile || p.fragileAir);
+    ctx.fillStyle = frag ? '#3d3d52' : '#2c2c3e';
+    ctx.strokeStyle = frag ? '#6a6a8a' : '#454560';
+    ctx.lineWidth = 2;
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeRect(p.x + 0.5, p.y + 0.5, p.w - 1, p.h - 1);
+    if (frag && !p.stepped) {
+      ctx.fillStyle = 'rgba(255,200,100,0.12)';
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+    }
+  }
+}
+
+function drawDoor(d, fake) {
+  if (!d) return;
+  ctx.save();
+  if (fake) {
+    ctx.filter = 'hue-rotate(140deg) saturate(1.4)';
+    ctx.globalAlpha = 0.92;
+  }
+  try {
+    ctx.drawImage(doorImg, d.x, d.y + DOOR_VISUAL_GROUND_OFFSET, d.w, d.h);
+  } catch (_) {
+    ctx.fillStyle = fake ? '#6a4a8a' : '#c9a227';
+    ctx.fillRect(d.x, d.y + DOOR_VISUAL_GROUND_OFFSET, d.w, d.h);
+  }
+  ctx.restore();
+  if (fake) {
+    ctx.fillStyle = 'rgba(255,80,80,0.35)';
+    ctx.font = 'bold 14px Segoe UI, sans-serif';
+    ctx.fillText('?', d.x + d.w / 2 - 4, d.y - 8);
+  }
+}
+
+function drawSpikes(L) {
+  for (const s of L.spikes) {
+    if (s.hidden) continue;
+    try {
+      if (s.square) {
+        const S = s.s;
+        const topH = S * 0.5;
+        const botH = S - topH;
+        drawSpikeTrimmed(spikeImg, s.x, s.y + topH, S, botH);
+        if (ship2Img.complete && ship2Img.naturalWidth) {
+          const tw = ship2Img.naturalWidth, th = ship2Img.naturalHeight;
+          const sc = SPIKE_DRAW_SCALE;
+          const nw = S * sc, nh = topH * sc;
+          ctx.drawImage(ship2Img, 0, 0, tw, th, s.x - (nw - S) / 2, s.y + topH - nh + SPIKE_VISUAL_GROUND_OFFSET, nw, nh);
+        } else {
+          drawSpikeTrimmed(spikeImg, s.x, s.y, S, S);
+        }
+      } else if (s.long) {
+        const tileW = 52;
+        for (let px = s.x; px < s.x + s.w; px += tileW) {
+          const tw = Math.min(tileW, s.x + s.w - px);
+          drawSpikeTrimmed(spikeImg, px, s.y, tw, s.h);
+        }
+        if (ship2Img.complete && ship2Img.naturalWidth) {
+          const tw = ship2Img.naturalWidth, th = ship2Img.naturalHeight;
+          const sc = SPIKE_DRAW_SCALE;
+          const nw = s.w * sc, nh = s.h * sc;
+          ctx.drawImage(ship2Img, 0, 0, tw, th, s.x - (nw - s.w) / 2, s.y + s.h - nh + SPIKE_VISUAL_GROUND_OFFSET, nw, nh);
+        }
+      } else {
+        drawSpikeTrimmed(spikeImg, s.x, s.y, s.w, s.h);
+      }
+    } catch (_) {
+      const w = s.square ? s.s : s.w;
+      const h = s.square ? s.s : s.h;
+      const sc = SPIKE_DRAW_SCALE;
+      const nw = w * sc, nh = h * sc;
+      const nx = s.x - (nw - w) / 2, ny = s.y + h - nh + SPIKE_VISUAL_GROUND_OFFSET;
+      ctx.fillStyle = '#c42b2b';
+      ctx.beginPath();
+      ctx.moveTo(nx + nw / 2, ny);
+      ctx.lineTo(nx + nw, ny + nh);
+      ctx.lineTo(nx, ny + nh);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
+function drawUI(L) {
+  ctx.fillStyle = '#eafff1';
+  ctx.strokeStyle = 'rgba(20, 70, 42, 0.85)';
+  ctx.lineWidth = 4;
+  ctx.shadowColor = 'rgba(90, 220, 140, 0.28)';
+  ctx.shadowBlur = 14;
+  ctx.font = '700 25px Segoe UI, system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  const levelText = 'Уровень ' + (levelIndex + 1);
+  ctx.strokeText(levelText, 24, 39);
+  ctx.fillText(levelText, 24, 39);
+
+  ctx.shadowBlur = 0;
+  const mb = menuButtonRect();
+  const hb = helpButtonRect();
+  const fb = fullscreenButtonRect();
+  ctx.fillStyle = '#1f5a38';
+  ctx.strokeStyle = '#69e89a';
+  ctx.lineWidth = 3;
+  ctx.fillRect(mb.x, mb.y, mb.w, mb.h);
+  ctx.strokeRect(mb.x + 1, mb.y + 1, mb.w - 2, mb.h - 2);
+  ctx.fillRect(hb.x, hb.y, hb.w, hb.h);
+  ctx.strokeRect(hb.x + 1, hb.y + 1, hb.w - 2, hb.h - 2);
+  ctx.fillRect(fb.x, fb.y, fb.w, fb.h);
+  ctx.strokeRect(fb.x + 1, fb.y + 1, fb.w - 2, fb.h - 2);
+  ctx.fillStyle = '#eafff1';
+  ctx.font = '700 19px Segoe UI, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('МЕНЮ', mb.x + mb.w / 2, mb.y + mb.h / 2 + 1);
+  ctx.font = '700 28px Segoe UI, system-ui, sans-serif';
+  ctx.fillText('?', hb.x + hb.w / 2, hb.y + hb.h / 2 + 1);
+  drawFullscreenIcon(fb.x, fb.y, fb.w, isFullscreenActive() ? '#a8ffcb' : '#eafff1');
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '600 19px Segoe UI, system-ui, monospace';
+  ctx.fillStyle = '#b7ffd3';
+  ctx.strokeStyle = 'rgba(12, 52, 31, 0.8)';
+  ctx.lineWidth = 3;
+  const timeStr = formatSpeedrun(speedrunDisplayMs());
+  const timeText = 'Время: ' + timeStr;
+  ctx.strokeText(timeText, 24, 64);
+  ctx.fillText(timeText, 24, 64);
+  if (levelHooks.onDraw) levelHooks.onDraw();
+}
+
+function drawFullscreenIcon(x, y, size, color) {
+  const pad = Math.round(size * 0.2);
+  const len = Math.round(size * 0.24);
+  const thickness = Math.max(2, Math.round(size * 0.09));
+  const left = x + pad;
+  const right = x + size - pad;
+  const top = y + pad;
+  const bottom = y + size - pad;
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = thickness;
+  ctx.lineCap = 'square';
+
+  ctx.beginPath();
+  ctx.moveTo(left, top + len);
+  ctx.lineTo(left, top);
+  ctx.lineTo(left + len, top);
+
+  ctx.moveTo(right - len, top);
+  ctx.lineTo(right, top);
+  ctx.lineTo(right, top + len);
+
+  ctx.moveTo(right, bottom - len);
+  ctx.lineTo(right, bottom);
+  ctx.lineTo(right - len, bottom);
+
+  ctx.moveTo(left + len, bottom);
+  ctx.lineTo(left, bottom);
+  ctx.lineTo(left, bottom - len);
+  ctx.stroke();
+}
+
+function draw(ts) {
+  if (!gamePlaying) return;
+  const L = LEVELS[levelIndex];
+  let sx = 0, sy = 0;
+  if (shake > 0) {
+    sx = (Math.random() - 0.5) * shake;
+    sy = (Math.random() - 0.5) * shake;
+  }
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  const bgImg = (levelIndex === 1) ? bg2Img : bg1Img;
+  const mirrorBg = (levelIndex === 3) || (levelIndex === 2 && L.l3 && L.l3.doorOnLeft);
+
+  if (bgImg.complete && bgImg.naturalWidth) {
+    // Фон-картинка под всей отрисовкой уровня (при необходимости зеркалим по X)
+    ctx.save();
+    if (mirrorBg) {
+      ctx.translate(W, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(bgImg, 0, 0, bgImg.naturalWidth, bgImg.naturalHeight, 0, 0, W, H);
+    ctx.restore();
+  } else {
+    // Фолбэк, если картинка ещё не загрузилась/не найдена
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#15151f');
+    g.addColorStop(1, '#0c0c14');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+  drawGrid();
+  drawDeathBackdrop();
+  drawSideWalls();
+
+  drawPlatforms(L);
+  drawSpikes(L);
+
+  if (L.door && !L.door.hidden) drawDoor(L.door, !!L.door.fake);
+  if (L.realDoor) drawDoor(L.realDoor, false);
+
+  if (deathRespawnUntil === 0) {
+    const spr = (player.facing < 0 && playerImgLeft.naturalWidth)
+      ? playerImgLeft
+      : playerImgRight;
+    const scale = PLAYER_DRAW_SCALE;
+    const drawW = player.w * scale;
+    const drawH = player.h * scale;
+    const drawX = player.x - (drawW - player.w) / 2;
+    const drawY = player.y + player.h - drawH + PLAYER_VISUAL_GROUND_OFFSET;
+    try {
+      if (spr.naturalWidth) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(spr, 0, 0, spr.naturalWidth, spr.naturalHeight, drawX, drawY, drawW, drawH);
+      } else {
+        ctx.fillStyle = '#5ab0ff';
+        ctx.fillRect(drawX, drawY, drawW, drawH);
+      }
+    } catch (_) {
+      ctx.fillStyle = '#5ab0ff';
+      ctx.fillRect(drawX, drawY, drawW, drawH);
+    }
+  }
+
+  drawUI(L);
+
+  for (const q of particles) {
+    ctx.fillStyle = '#00ff66';
+    ctx.globalAlpha = Math.max(0, Math.min(1, q.life / 100));
+    ctx.font = '24px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(q.char, q.x, q.y);
+    ctx.globalAlpha = 1;
+  }
+
+  if (fade > 0) {
+    ctx.fillStyle = `rgba(0,0,0,${fade * 0.95})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  ctx.restore();
+}
+
+function loop(ts) {
+  update(ts);
+  draw(ts);
+  requestAnimationFrame(loop);
+}
+
+Promise.all([
+  loadImage(playerImgRight),
+  loadImage(playerImgLeft).catch(() => {}),
+  loadImage(doorImg),
+  loadImage(spikeImg),
+  loadImage(ship2Img).catch(() => {}),
+  loadImage(bg1Img).catch(() => {}),
+  loadImage(bg2Img).catch(() => {}),
+  loadImage(bg3Img).catch(() => {}),
+])
+  .then(() => {
+    initMenus();
+    requestAnimationFrame(loop);
+  })
+  .catch(() => {
+    initMenus();
+    requestAnimationFrame(loop);
+  });
+</script>
+</body>
+</html>
